@@ -1,0 +1,26 @@
+booktype
+fastapi==0.118.0
+uvicorn==0.37.0
+sqlalchemy==2.0.43
+watchdog==6.0.0
+flet==0.28.3
+requests==2.32.5
+fastapi-mail==1.5.0
+python-multipart==0.0.20
+jinja2==3.1.6
+python-jose==3.5.0
+passlib==1.7.4
+aiosqlite==0.21.0
+pyjwt[crypto]==2.10.1
+aiofiles==24.1.0
+python-dotenv==1.1.1
+
+# Güvenlik Bağımlılıkları
+slowapi==0.1.9
+redis==6.4.0
+cryptography==46.0.2
+python-multipart==0.0.20
+email-validator==2.3.0
+httpx==0.28.1
+sqlalchemy-stubs==0.4
+

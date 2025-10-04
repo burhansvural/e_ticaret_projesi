@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # Redis Service
+  redis:
+    image: redis:7-alpine
+    container_name: eticaret_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-}
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - eticaret_network
+
+  # Backend API Service (Optional - uncomment to use)
+  # backend:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: eticaret_backend
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8000:8000"
+  #   environment:
+  #     - REDIS_URL=redis://redis:6379/0
+  #     - DATABASE_URL=sqlite:///./ecommerce.db
+  #   volumes:
+  #     - ./backend:/app/backend
+  #     - ./ecommerce.db:/app/ecommerce.db
+  #   depends_on:
+  #     redis:
+  #       condition: service_healthy
+  #   networks:
+  #     - eticaret_network
+
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  eticaret_network:
+    driver: bridge

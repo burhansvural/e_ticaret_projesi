@@ -1,0 +1,115 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+ecommerce.db
+test.db
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Static Files
+static/uploads/*
+!static/uploads/.gitkeep
+static/images/*
+!static/images/.gitkeep
+
+# Storage
+frontend/storage/data/*
+!frontend/storage/data/.gitkeep
+admin_panel/storage/data/*
+!admin_panel/storage/data/.gitkeep
+
+# Backup Files
+*.bak
+*.backup
+*_backup.json
+migration_backup_*.json
+
+# Test Files
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+
+# Redis
+dump.rdb
+
+# Temporary Files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# OS Files
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# Project Specific
+hata.txt
+test_*.py
+check_*.py
+list_*.py
+create_*.py
+delete_*.py
+migrate_*.py
+clear_*.py
+simple_*.py
+update_*.py
+
+# Documentation Backups
+*_BACKUP.md
+CHANGELOG_*.md
+ÖZET_RAPOR_*.md
+
+# Zencoder
+.zencoder/

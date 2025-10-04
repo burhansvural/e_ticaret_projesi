@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-mail Doğrulama</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 32px;
+            font-weight: bold;
+            color: #2196F3;
+            margin-bottom: 10px;
+        }
+        .title {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .content {
+            font-size: 16px;
+            margin-bottom: 30px;
+        }
+        .button {
+            display: inline-block;
+            background-color: #2196F3;
+            color: white;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .button:hover {
+            background-color: #1976D2;
+        }
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            font-size: 14px;
+            color: #666;
+            text-align: center;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .link-text {
+            word-break: break-all;
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🛒 E-Ticaret Mağazası</div>
+            <h1 class="title">E-mail Adresinizi Doğrulayın</h1>
+        </div>
+        
+        <div class="content">
+            <p>Merhaba <strong>{{ first_name }} {{ last_name }}</strong>,</p>
+            
+            <p>E-Ticaret Mağazası'na hoş geldiniz! Hesabınızı aktifleştirmek için e-mail adresinizi doğrulamanız gerekmektedir.</p>
+            
+            <p>Aşağıdaki butona tıklayarak e-mail adresinizi doğrulayabilirsiniz:</p>
+            
+            <div style="text-align: center;">
+                <a href="{{ verification_url }}" class="button">E-mail Adresimi Doğrula</a>
+            </div>
+            
+            <div class="warning">
+                <strong>⚠️ Önemli:</strong> Bu doğrulama bağlantısı 24 saat geçerlidir. Süre dolmadan önce doğrulama işlemini tamamlayın.
+            </div>
+            
+            <p>Eğer yukarıdaki buton çalışmıyorsa, aşağıdaki bağlantıyı kopyalayıp tarayıcınıza yapıştırabilirsiniz:</p>
+            
+            <div class="link-text">
+                {{ verification_url }}
+            </div>
+            
+            <p>Bu e-maili siz talep etmediyseniz, güvenliğiniz için bu mesajı görmezden gelebilirsiniz.</p>
+        </div>
+        
+        <div class="footer">
+            <p><strong>E-Ticaret Mağazası</strong></p>
+            <p>Bu otomatik bir e-maildır, lütfen yanıtlamayın.</p>
+            <p>Sorularınız için: <a href="mailto:destek@eticaret.com">destek@eticaret.com</a></p>
+        </div>
+    </div>
+</body>
+</html>
