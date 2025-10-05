@@ -11,6 +11,7 @@ class DashboardView:
     """Dashboard view with statistics and overview"""
     
     def __init__(self, page: ft.Page, api_service: APIService, notification_manager):
+        self.stats_row = None
         self.page = page
         self.api_service = api_service
         self.notification_manager = notification_manager

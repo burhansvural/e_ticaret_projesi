@@ -139,7 +139,7 @@ async def websocket_endpoint(websocket: WebSocket):
 async def upload_image(
     request: Request,
     file: UploadFile = File(...),
-    current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(get_current_admin_user)
 ):
     try:
         # Dosya içeriğini oku
@@ -187,19 +187,20 @@ async def create_product(
 ): 
     # Girdi sanitizasyonu
     product.name = sanitize_input(product.name)
-    product.description = sanitize_input(product.description, allow_html=False)
-    product.category = sanitize_input(product.category)
+    if product.description:
+        product.description = sanitize_input(product.description, allow_html=False)
     
     # SQL injection kontrolü (ek güvenlik katmanı)
-    if not all([
+    validation_checks = [
         validate_sql_input(product.name),
-        validate_sql_input(product.description),
-        validate_sql_input(product.category)
-    ]):
+        validate_sql_input(product.description) if product.description else True
+    ]
+    
+    if not all(validation_checks):
         SecurityAuditLogger.log_security_event(
             "potential_sql_injection_attempt_product_creation",
             current_user.id,
-            {"product_name": product.name, "product_description": product.description, "category": product.category},
+            {"product_name": product.name, "product_description": product.description},
             request
         )
         raise HTTPException(status_code=400, detail="Geçersiz karakter kullanımı tespit edildi.")
@@ -217,7 +218,7 @@ async def create_product(
             "product_id": db_product.id,
             "product_name": db_product.name,
             "price": db_product.price,
-            "category": db_product.category
+            "category_id": db_product.category_id
         },
         request
     )
@@ -262,7 +263,7 @@ async def delete_product(
             "product_id": db_product.id,
             "product_name": db_product.name,
             "price": db_product.price,
-            "category": db_product.category
+            "category_id": db_product.category_id
         },
         request
     )
@@ -297,7 +298,7 @@ async def update_product(
     old_values = {
         "name": db_product.name,
         "price": db_product.price,
-        "category": db_product.category,
+        "category_id": db_product.category_id,
         "stock_quantity": db_product.stock_quantity
     }
 

@@ -11,6 +11,7 @@ class OrdersView:
     """Orders management view"""
     
     def __init__(self, page: ft.Page, api_service: APIService, notification_manager, modal_manager):
+        self.orders_table = None
         self.page = page
         self.api_service = api_service
         self.notification_manager = notification_manager

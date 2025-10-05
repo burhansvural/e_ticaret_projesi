@@ -3,8 +3,9 @@ API Service - Handles all API requests
 """
 
 import requests
-from typing import Optional, Dict, Any
-from config import API_URL, API_TIMEOUT
+from typing import Optional, Dict, Any, Union
+
+from admin_panel.config import API_URL, API_TIMEOUT
 
 
 class APIService:
@@ -15,7 +16,7 @@ class APIService:
         self.base_url = API_URL
         self.timeout = API_TIMEOUT
     
-    def set_token(self, token: str):
+    def set_token(self, token: Union[str,None] ):
         """Set authentication token"""
         self.access_token = token
     
@@ -93,11 +94,12 @@ class APIService:
         response.raise_for_status()
         return response.json()
     
-    def delete_product(self, product_id: int) -> Dict[str, Any]:
+    def delete_product(self, product_id: int) -> bool:
         """Delete product"""
         response = self.delete(f"/products/{product_id}")
         response.raise_for_status()
-        return response.json()
+        # 204 No Content response has no body
+        return response.status_code == 204
     
     def get_orders(self) -> Dict[str, Any]:
         """Get all orders"""
@@ -150,16 +152,21 @@ class APIService:
         response.raise_for_status()
         return response.json()
     
-    def delete_category(self, category_id: int) -> Dict[str, Any]:
+    def delete_category(self, category_id: int) -> bool:
         """Delete category"""
         response = self.delete(f"/categories/{category_id}")
         response.raise_for_status()
-        return response.json()
+        # 204 No Content response has no body
+        return response.status_code == 204
     
     def upload_image(self, file_data) -> Dict[str, Any]:
         """Upload image"""
         files = {"file": file_data}
         url = f"{self.base_url}/upload-image/"
-        response = requests.post(url, files=files, timeout=self.timeout)
+        # Authorization header ekle (multipart/form-data için Content-Type otomatik)
+        headers = {}
+        if self.access_token:
+            headers["Authorization"] = f"Bearer {self.access_token}"
+        response = requests.post(url, files=files, headers=headers, timeout=self.timeout)
         response.raise_for_status()
         return response.json()

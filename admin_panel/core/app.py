@@ -6,7 +6,23 @@ import flet as ft
 from admin_panel.components import NotificationManager, ModalManager, Sidebar
 from admin_panel.config import Config
 from admin_panel.services import APIService, AuthService
-from admin_panel.views import AuthView, DashboardView, ProductsView, OrdersView, CustomersView, CategoriesView
+from admin_panel.views import (
+    AuthView, DashboardView, ProductsView, OrdersView, CustomersView, CategoriesView,
+    InventoryView, SalesReportsView, ProductPerformanceView, CustomerAnalyticsView,
+    CampaignsView, CouponsView, EmailMarketingView,
+    GeneralSettingsView, UserManagementView, NotificationsSettingsView, SystemLogsView,
+    ShippingCompaniesView, ShipmentTrackingView, DeliveryZonesView,
+    BlogPostsView, PagesView, FAQView, MediaLibraryView,
+    IncomeReportView, ExpensesView, InvoicesView, PaymentMethodsView,
+    ProductsListView, AddProductView, BulkProductsView, ProductAttributesView, BrandsView,
+    OrdersListView, PendingOrdersView, ProcessingOrdersView, ShippingOrdersView,
+    CompletedOrdersView, CancelledOrdersView, ReturnRequestsView,
+    CustomersListView, CustomerGroupsView, ReviewsView, LoyaltyProgramView, CustomerMessagesView,
+    TaxSettingsView, CashFlowView, BankAccountsView, ShippingRatesView,
+    SMSCampaignsView, BannersView, SEOSettingsView, SocialMediaView,
+    StockReportsView, FinancialReportsView, TrafficAnalyticsView,
+    RolesPermissionsView, BackupView, APISettingsView, IntegrationsView
+)
 
 
 class AdminPanel:
@@ -36,11 +52,7 @@ class AdminPanel:
         
         # Initialize views (will be created after login)
         self.auth_view = None
-        self.dashboard_view = None
-        self.products_view = None
-        self.orders_view = None
-        self.customers_view = None
-        self.categories_view = None
+        self.views = {}  # Dictionary to store all views
         
         # Start with login screen
         self.show_login()
@@ -86,38 +98,84 @@ class AdminPanel:
     
     def _initialize_views(self):
         """Initialize all views after authentication"""
-        self.dashboard_view = DashboardView(
-            page=self.page,
-            api_service=self.api_service,
-            notification_manager=self.notification_manager
-        )
+        # Main views
+        self.views['dashboard'] = DashboardView(self.page, self.api_service, self.notification_manager)
+        self.views['products'] = ProductsView(self.page, self.api_service, self.notification_manager, self.modal_manager)
+        self.views['orders'] = OrdersView(self.page, self.api_service, self.notification_manager, self.modal_manager)
+        self.views['customers'] = CustomersView(self.page, self.api_service, self.notification_manager)
+        self.views['categories'] = CategoriesView(self.page, self.api_service, self.notification_manager, self.modal_manager)
         
-        self.products_view = ProductsView(
-            page=self.page,
-            api_service=self.api_service,
-            notification_manager=self.notification_manager,
-            modal_manager=self.modal_manager
-        )
+        # Product Management
+        self.views['products_list'] = ProductsListView(self.page, self.api_service, self.notification_manager)
+        self.views['add_product'] = AddProductView(self.page, self.api_service, self.notification_manager)
+        self.views['inventory'] = InventoryView(self.page, self.api_service, self.notification_manager)
+        self.views['bulk_products'] = BulkProductsView(self.page, self.api_service, self.notification_manager)
+        self.views['product_attributes'] = ProductAttributesView(self.page, self.api_service, self.notification_manager)
+        self.views['brands'] = BrandsView(self.page, self.api_service, self.notification_manager)
         
-        self.orders_view = OrdersView(
-            page=self.page,
-            api_service=self.api_service,
-            notification_manager=self.notification_manager,
-            modal_manager=self.modal_manager
-        )
+        # Order Management
+        self.views['orders_list'] = OrdersListView(self.page, self.api_service, self.notification_manager)
+        self.views['pending_orders'] = PendingOrdersView(self.page, self.api_service, self.notification_manager)
+        self.views['processing_orders'] = ProcessingOrdersView(self.page, self.api_service, self.notification_manager)
+        self.views['shipping_orders'] = ShippingOrdersView(self.page, self.api_service, self.notification_manager)
+        self.views['completed_orders'] = CompletedOrdersView(self.page, self.api_service, self.notification_manager)
+        self.views['cancelled_orders'] = CancelledOrdersView(self.page, self.api_service, self.notification_manager)
+        self.views['return_requests'] = ReturnRequestsView(self.page, self.api_service, self.notification_manager)
         
-        self.customers_view = CustomersView(
-            page=self.page,
-            api_service=self.api_service,
-            notification_manager=self.notification_manager
-        )
+        # Customer Management
+        self.views['customers_list'] = CustomersListView(self.page, self.api_service, self.notification_manager)
+        self.views['customer_groups'] = CustomerGroupsView(self.page, self.api_service, self.notification_manager)
+        self.views['reviews'] = ReviewsView(self.page, self.api_service, self.notification_manager)
+        self.views['loyalty_program'] = LoyaltyProgramView(self.page, self.api_service, self.notification_manager)
+        self.views['customer_messages'] = CustomerMessagesView(self.page, self.api_service, self.notification_manager)
         
-        self.categories_view = CategoriesView(
-            page=self.page,
-            api_service=self.api_service,
-            notification_manager=self.notification_manager,
-            modal_manager=self.modal_manager
-        )
+        # Finance
+        self.views['income_report'] = IncomeReportView(self.page, self.api_service, self.notification_manager)
+        self.views['expenses'] = ExpensesView(self.page, self.api_service, self.notification_manager, self.modal_manager)
+        self.views['invoices'] = InvoicesView(self.page, self.api_service, self.notification_manager)
+        self.views['payment_methods'] = PaymentMethodsView(self.page, self.api_service, self.notification_manager, self.modal_manager)
+        self.views['tax_settings'] = TaxSettingsView(self.page, self.api_service, self.notification_manager)
+        self.views['cash_flow'] = CashFlowView(self.page, self.api_service, self.notification_manager)
+        self.views['bank_accounts'] = BankAccountsView(self.page, self.api_service, self.notification_manager)
+        
+        # Shipping & Logistics
+        self.views['shipping_companies'] = ShippingCompaniesView(self.page, self.api_service, self.notification_manager, self.modal_manager)
+        self.views['shipment_tracking'] = ShipmentTrackingView(self.page, self.api_service, self.notification_manager)
+        self.views['delivery_zones'] = DeliveryZonesView(self.page, self.api_service, self.notification_manager, self.modal_manager)
+        self.views['shipping_rates'] = ShippingRatesView(self.page, self.api_service, self.notification_manager)
+        
+        # Marketing
+        self.views['campaigns'] = CampaignsView(self.page, self.api_service, self.notification_manager, self.modal_manager)
+        self.views['coupons'] = CouponsView(self.page, self.api_service, self.notification_manager, self.modal_manager)
+        self.views['email_marketing'] = EmailMarketingView(self.page, self.api_service, self.notification_manager)
+        self.views['sms_campaigns'] = SMSCampaignsView(self.page, self.api_service, self.notification_manager)
+        self.views['banners'] = BannersView(self.page, self.api_service, self.notification_manager)
+        self.views['seo_settings'] = SEOSettingsView(self.page, self.api_service, self.notification_manager)
+        self.views['social_media'] = SocialMediaView(self.page, self.api_service, self.notification_manager)
+        
+        # Reports & Analytics
+        self.views['sales_reports'] = SalesReportsView(self.page, self.api_service, self.notification_manager)
+        self.views['product_performance'] = ProductPerformanceView(self.page, self.api_service, self.notification_manager)
+        self.views['customer_analytics'] = CustomerAnalyticsView(self.page, self.api_service, self.notification_manager)
+        self.views['stock_reports'] = StockReportsView(self.page, self.api_service, self.notification_manager)
+        self.views['financial_reports'] = FinancialReportsView(self.page, self.api_service, self.notification_manager)
+        self.views['traffic_analytics'] = TrafficAnalyticsView(self.page, self.api_service, self.notification_manager)
+        
+        # Content Management
+        self.views['blog_posts'] = BlogPostsView(self.page, self.api_service, self.notification_manager, self.modal_manager)
+        self.views['pages'] = PagesView(self.page, self.api_service, self.notification_manager, self.modal_manager)
+        self.views['faq'] = FAQView(self.page, self.api_service, self.notification_manager, self.modal_manager)
+        self.views['media_library'] = MediaLibraryView(self.page, self.api_service, self.notification_manager)
+        
+        # System & Settings
+        self.views['general_settings'] = GeneralSettingsView(self.page, self.api_service, self.notification_manager)
+        self.views['user_management'] = UserManagementView(self.page, self.api_service, self.notification_manager, self.modal_manager)
+        self.views['roles_permissions'] = RolesPermissionsView(self.page, self.api_service, self.notification_manager)
+        self.views['notifications'] = NotificationsSettingsView(self.page, self.api_service, self.notification_manager)
+        self.views['backup'] = BackupView(self.page, self.api_service, self.notification_manager)
+        self.views['system_logs'] = SystemLogsView(self.page, self.api_service, self.notification_manager)
+        self.views['api_settings'] = APISettingsView(self.page, self.api_service, self.notification_manager)
+        self.views['integrations'] = IntegrationsView(self.page, self.api_service, self.notification_manager)
     
     def show_main_panel(self):
         """Show main admin panel with sidebar and content area"""
@@ -161,22 +219,28 @@ class AdminPanel:
         # Clear content area
         self.content_area.content = ft.Column([])
         
-        # Show appropriate view and load data
-        if view_name == "dashboard":
-            self.content_area.content = self.dashboard_view.build()
-            self.dashboard_view.load_data()
-        elif view_name == "products":
-            self.content_area.content = self.products_view.build()
-            self.products_view.load_products()
-        elif view_name == "orders":
-            self.content_area.content = self.orders_view.build()
-            self.orders_view.load_orders()
-        elif view_name == "customers":
-            self.content_area.content = self.customers_view.build()
-            self.customers_view.load_customers()
-        elif view_name == "categories":
-            self.content_area.content = self.categories_view.build()
-            self.categories_view.load_categories()
+        # Check if view exists
+        if view_name in self.views:
+            view = self.views[view_name]
+            self.content_area.content = view.build()
+            
+            # Load data if view has load_data method
+            if hasattr(view, 'load_data'):
+                view.load_data()
+            # Fallback to old method names for backward compatibility
+            elif view_name == "products" and hasattr(view, 'load_products'):
+                view.load_products()
+            elif view_name == "orders" and hasattr(view, 'load_orders'):
+                view.load_orders()
+            elif view_name == "customers" and hasattr(view, 'load_customers'):
+                view.load_customers()
+            elif view_name == "categories" and hasattr(view, 'load_categories'):
+                view.load_categories()
+        else:
+            # Show error if view not found
+            self.content_area.content = ft.Column([
+                ft.Text(f"View '{view_name}' not found", size=20, color=ft.Colors.RED)
+            ])
         
         self.page.update()
     
@@ -191,11 +255,7 @@ class AdminPanel:
             self.api_service.set_token(None)
             
             # Clear views
-            self.dashboard_view = None
-            self.products_view = None
-            self.orders_view = None
-            self.customers_view = None
-            self.categories_view = None
+            self.views = {}
             
             # Show login screen
             self.notification_manager.show_info("Çıkış yapıldı")

@@ -3,7 +3,7 @@ Authentication Service
 """
 
 import requests
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 
 from admin_panel.config import API_URL, API_TIMEOUT
 

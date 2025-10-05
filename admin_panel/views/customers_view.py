@@ -11,6 +11,7 @@ class CustomersView:
     """Customers management view"""
     
     def __init__(self, page: ft.Page, api_service: APIService, notification_manager):
+        self.customers_table = None
         self.page = page
         self.api_service = api_service
         self.notification_manager = notification_manager
@@ -23,7 +24,6 @@ class CustomersView:
         # Customers table
         self.customers_table = ft.DataTable(
             columns=[
-                ft.DataColumn(ft.Text("ID")),
                 ft.DataColumn(ft.Text("Ad Soyad")),
                 ft.DataColumn(ft.Text("E-posta")),
                 ft.DataColumn(ft.Text("Telefon")),
@@ -61,7 +61,6 @@ class CustomersView:
         for customer in self.customers:
             self.customers_table.rows.append(
                 ft.DataRow(cells=[
-                    ft.DataCell(ft.Text(str(customer.get('id', '')))),
                     ft.DataCell(ft.Text(f"{customer.get('first_name', '')} {customer.get('last_name', '')}")),
                     ft.DataCell(ft.Text(customer.get('email', ''))),
                     ft.DataCell(ft.Text(customer.get('phone', 'N/A'))),

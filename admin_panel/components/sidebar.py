@@ -83,7 +83,7 @@ class Sidebar:
                         
                         # Product Management
                         self._create_menu_section("Ürün Yönetimi", ft.Icons.INVENTORY),
-                        self._create_submenu_item("Ürün Listesi", ft.Icons.LIST, "products_list"),
+                        self._create_submenu_item("Ürün Listesi", ft.Icons.LIST, "products"),
                         self._create_submenu_item("Ürün Ekle", ft.Icons.ADD_CIRCLE, "add_product"),
                         self._create_submenu_item("Kategoriler", ft.Icons.CATEGORY, "categories"),
                         self._create_submenu_item("Stok Yönetimi", ft.Icons.WAREHOUSE, "inventory"),
