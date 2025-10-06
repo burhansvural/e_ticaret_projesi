@@ -170,3 +170,105 @@ class APIService:
         response = requests.post(url, files=files, headers=headers, timeout=self.timeout)
         response.raise_for_status()
         return response.json()
+    
+    # Stock Management API Methods
+    
+    def get_stock_movements(self, product_id: Optional[int] = None) -> Dict[str, Any]:
+        """Get stock movements (optionally filtered by product)"""
+        params = {"product_id": product_id} if product_id else None
+        response = self.get("/stock/movements/", params=params)
+        response.raise_for_status()
+        return response.json()
+    
+    def create_stock_movement(self, movement_data: Dict) -> Dict[str, Any]:
+        """Create stock movement (entry/exit)"""
+        response = self.post("/stock/movements/", json=movement_data)
+        response.raise_for_status()
+        return response.json()
+    
+    def get_low_stock_products(self, threshold: int = 10) -> Dict[str, Any]:
+        """Get products with low stock"""
+        response = self.get(f"/stock/low-stock/?threshold={threshold}")
+        response.raise_for_status()
+        return response.json()
+    
+    def get_stock_summary(self) -> Dict[str, Any]:
+        """Get overall stock summary"""
+        response = self.get("/stock/summary/")
+        response.raise_for_status()
+        return response.json()
+    
+    # Supplier Management API Methods
+    
+    def get_suppliers(self) -> Dict[str, Any]:
+        """Get all suppliers"""
+        response = self.get("/suppliers/")
+        response.raise_for_status()
+        return response.json()
+    
+    def get_supplier(self, supplier_id: int) -> Dict[str, Any]:
+        """Get single supplier"""
+        response = self.get(f"/suppliers/{supplier_id}")
+        response.raise_for_status()
+        return response.json()
+    
+    def create_supplier(self, supplier_data: Dict) -> Dict[str, Any]:
+        """Create new supplier"""
+        response = self.post("/suppliers/", json=supplier_data)
+        response.raise_for_status()
+        return response.json()
+    
+    def update_supplier(self, supplier_id: int, supplier_data: Dict) -> Dict[str, Any]:
+        """Update supplier"""
+        response = self.put(f"/suppliers/{supplier_id}", json=supplier_data)
+        response.raise_for_status()
+        return response.json()
+    
+    def delete_supplier(self, supplier_id: int) -> bool:
+        """Delete supplier"""
+        response = self.delete(f"/suppliers/{supplier_id}")
+        response.raise_for_status()
+        return response.status_code == 204
+    
+    # Purchase Invoice/Waybill API Methods
+    
+    def get_purchase_invoices(self) -> Dict[str, Any]:
+        """Get all purchase invoices"""
+        response = self.get("/purchases/")
+        response.raise_for_status()
+        return response.json()
+    
+    def get_purchase_invoice(self, invoice_id: int) -> Dict[str, Any]:
+        """Get single purchase invoice"""
+        response = self.get(f"/purchases/{invoice_id}")
+        response.raise_for_status()
+        return response.json()
+    
+    def create_purchase_invoice(self, invoice_data: Dict) -> Dict[str, Any]:
+        """Create new purchase invoice"""
+        response = self.post("/purchases/", json=invoice_data)
+        response.raise_for_status()
+        return response.json()
+    
+    def update_purchase_invoice(self, invoice_id: int, invoice_data: Dict) -> Dict[str, Any]:
+        """Update purchase invoice"""
+        response = self.put(f"/purchases/{invoice_id}", json=invoice_data)
+        response.raise_for_status()
+        return response.json()
+    
+    def delete_purchase_invoice(self, invoice_id: int) -> bool:
+        """Delete purchase invoice"""
+        response = self.delete(f"/purchases/{invoice_id}")
+        response.raise_for_status()
+        return response.status_code == 204
+    
+    def upload_purchase_document(self, file_data) -> Dict[str, Any]:
+        """Upload purchase document (invoice/waybill PDF/image)"""
+        files = {"file": file_data}
+        url = f"{self.base_url}/purchases/upload-document/"
+        headers = {}
+        if self.access_token:
+            headers["Authorization"] = f"Bearer {self.access_token}"
+        response = requests.post(url, files=files, headers=headers, timeout=self.timeout)
+        response.raise_for_status()
+        return response.json()

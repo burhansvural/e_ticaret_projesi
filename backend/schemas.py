@@ -298,3 +298,128 @@ class TokenRefreshResponse(BaseModel):
 # Logout request schema
 class LogoutRequest(BaseModel):
     refresh_token: Optional[str] = None
+
+
+# Stok hareketi oluşturma
+class StockMovementCreate(BaseModel):
+    product_id: int
+    movement_type: str = Field(..., pattern=r'^(entry|exit)$')  # entry veya exit
+    quantity: int = Field(..., gt=0)
+    description: Optional[str] = None
+    reference: Optional[str] = None
+
+
+# Stok hareketi yanıtı
+class StockMovement(BaseModel):
+    id: int
+    product_id: int
+    product_name: Optional[str] = None  # Ürün adı join ile gelecek
+    movement_type: str
+    quantity: int
+    description: Optional[str] = None
+    reference: Optional[str] = None
+    created_by: Optional[int] = None
+    created_at: datetime.datetime
+    
+    class Config:
+        from_attributes = True
+
+
+# Tedarikçi oluşturma
+class SupplierCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200)
+    contact_person: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    tax_number: Optional[str] = None
+    notes: Optional[str] = None
+    is_active: bool = True
+
+
+# Tedarikçi güncelleme
+class SupplierUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=200)
+    contact_person: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    tax_number: Optional[str] = None
+    notes: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+# Tedarikçi yanıtı
+class Supplier(BaseModel):
+    id: int
+    name: str
+    contact_person: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    tax_number: Optional[str] = None
+    notes: Optional[str] = None
+    is_active: bool
+    created_at: datetime.datetime
+    updated_at: datetime.datetime
+    
+    class Config:
+        from_attributes = True
+
+
+# Satın alma kalemi oluşturma
+class PurchaseItemCreate(BaseModel):
+    product_id: int
+    quantity: int = Field(..., gt=0)
+    unit_price: float = Field(..., gt=0)
+
+
+# Satın alma kalemi yanıtı
+class PurchaseItem(BaseModel):
+    id: int
+    purchase_id: int
+    product_id: int
+    product_name: Optional[str] = None
+    quantity: int
+    unit_price: float
+    total_price: float
+    
+    class Config:
+        from_attributes = True
+
+
+# Satın alma oluşturma
+class PurchaseCreate(BaseModel):
+    supplier_id: int
+    invoice_number: Optional[str] = None
+    purchase_date: Optional[datetime.datetime] = None
+    notes: Optional[str] = None
+    items: List[PurchaseItemCreate] = Field(..., min_length=1)
+
+
+# Satın alma güncelleme
+class PurchaseUpdate(BaseModel):
+    supplier_id: Optional[int] = None
+    invoice_number: Optional[str] = None
+    purchase_date: Optional[datetime.datetime] = None
+    notes: Optional[str] = None
+    status: Optional[str] = Field(None, pattern=r'^(pending|completed|cancelled)$')
+
+
+# Satın alma yanıtı
+class Purchase(BaseModel):
+    id: int
+    supplier_id: int
+    supplier_name: Optional[str] = None
+    invoice_number: Optional[str] = None
+    purchase_date: datetime.datetime
+    total_amount: float
+    notes: Optional[str] = None
+    status: str
+    created_by: Optional[int] = None
+    created_at: datetime.datetime
+    updated_at: datetime.datetime
+    items: List[PurchaseItem] = []
+    
+    class Config:
+        from_attributes = True

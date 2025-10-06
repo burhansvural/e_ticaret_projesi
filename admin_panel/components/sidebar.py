@@ -86,10 +86,24 @@ class Sidebar:
                         self._create_submenu_item("Ürün Listesi", ft.Icons.LIST, "products"),
                         self._create_submenu_item("Ürün Ekle", ft.Icons.ADD_CIRCLE, "add_product"),
                         self._create_submenu_item("Kategoriler", ft.Icons.CATEGORY, "categories"),
-                        self._create_submenu_item("Stok Yönetimi", ft.Icons.WAREHOUSE, "inventory"),
                         self._create_submenu_item("Toplu Ürün İşlemleri", ft.Icons.UPLOAD_FILE, "bulk_products"),
                         self._create_submenu_item("Ürün Özellikleri", ft.Icons.TUNE, "product_attributes"),
                         self._create_submenu_item("Markalar", ft.Icons.BRANDING_WATERMARK, "brands"),
+                        
+                        # Stock Management
+                        self._create_menu_section("Stok Yönetimi", ft.Icons.WAREHOUSE),
+                        self._create_submenu_item("Stok Hareketleri", ft.Icons.SWAP_HORIZ, "stock_movements"),
+                        self._create_submenu_item("Düşük Stok Uyarıları", ft.Icons.WARNING_AMBER, "low_stock_alerts"),
+                        self._create_submenu_item("Stok Girişi", ft.Icons.ADD_BOX, "manual_stock_entry"),
+                        self._create_submenu_item("Stok Çıkışı", ft.Icons.REMOVE_CIRCLE, "manual_stock_exit"),
+                        self._create_submenu_item("Stok Raporu", ft.Icons.INVENTORY, "inventory"),
+                        
+                        # Supplier Management
+                        self._create_menu_section("Tedarikçi Yönetimi", ft.Icons.BUSINESS),
+                        self._create_submenu_item("Tedarikçiler", ft.Icons.BUSINESS, "suppliers_list"),
+                        self._create_submenu_item("Yeni Tedarikçi", ft.Icons.ADD_BUSINESS, "add_supplier"),
+                        self._create_submenu_item("Alış Faturaları", ft.Icons.RECEIPT, "purchase_invoices"),
+                        self._create_submenu_item("Yeni Fatura/İrsaliye", ft.Icons.ADD_SHOPPING_CART, "add_purchase_invoice"),
                         
                         # Order Management
                         self._create_menu_section("Sipariş Yönetimi", ft.Icons.SHOPPING_CART),

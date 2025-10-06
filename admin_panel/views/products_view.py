@@ -343,7 +343,7 @@ class ProductsView:
     
     def show_add_product_form(self):
         """Show add product form"""
-        name_field = ft.TextField(label="Ürün Adı *", hint_text="Ürün adını girin")
+        name_field = ft.TextField(label="Ürün Adı *", hint_text="Ürün adını girin", autofocus=True)
         description_field = ft.TextField(
             label="Açıklama",
             hint_text="Ürün açıklaması",
@@ -531,7 +531,7 @@ class ProductsView:
     
     def edit_product(self, product):
         """Edit product"""
-        name_field = ft.TextField(label="Ürün Adı *", value=product.get('name', ''))
+        name_field = ft.TextField(label="Ürün Adı *", value=product.get('name', ''), autofocus=True)
         description_field = ft.TextField(
             label="Açıklama",
             value=product.get('description', ''),

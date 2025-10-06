@@ -181,3 +181,21 @@ class BlacklistedToken(Base):
     blacklisted_at = Column(DateTime, default=datetime.datetime.utcnow)
     expires_at = Column(DateTime, nullable=False)  # Token'ın orijinal süresi
     reason = Column(String, nullable=True)  # logout, password_change, admin_action, etc.
+
+
+class StockMovement(Base):
+    """Stok hareketleri tablosu"""
+    __tablename__ = "stock_movements"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    movement_type = Column(String, nullable=False)  # entry (giriş) veya exit (çıkış)
+    quantity = Column(Integer, nullable=False)
+    description = Column(Text, nullable=True)
+    reference = Column(String, nullable=True)  # Referans numarası (fatura no, sipariş no vb.)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    
+    # İlişkiler
+    product = relationship("Product")
+    user = relationship("User")

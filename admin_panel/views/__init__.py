@@ -63,6 +63,18 @@ from .simple_views import (
     RolesPermissionsView, BackupView, APISettingsView, IntegrationsView
 )
 
+# Stock Management Views
+from .stock_views import (
+    StockMovementsView, LowStockAlertsView, 
+    ManualStockEntryView, ManualStockExitView
+)
+
+# Supplier and Purchase Management Views
+from .supplier_views import (
+    SuppliersListView, AddSupplierView,
+    PurchaseInvoicesView, AddPurchaseInvoiceView
+)
+
 __all__ = [
     'AuthView',
     'DashboardView',
@@ -124,4 +136,14 @@ __all__ = [
     'BackupView',
     'APISettingsView',
     'IntegrationsView',
+    # Stock Management
+    'StockMovementsView',
+    'LowStockAlertsView',
+    'ManualStockEntryView',
+    'ManualStockExitView',
+    # Supplier and Purchase Management
+    'SuppliersListView',
+    'AddSupplierView',
+    'PurchaseInvoicesView',
+    'AddPurchaseInvoiceView',
 ]

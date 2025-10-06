@@ -21,7 +21,11 @@ from admin_panel.views import (
     TaxSettingsView, CashFlowView, BankAccountsView, ShippingRatesView,
     SMSCampaignsView, BannersView, SEOSettingsView, SocialMediaView,
     StockReportsView, FinancialReportsView, TrafficAnalyticsView,
-    RolesPermissionsView, BackupView, APISettingsView, IntegrationsView
+    RolesPermissionsView, BackupView, APISettingsView, IntegrationsView,
+    # Stock Management
+    StockMovementsView, LowStockAlertsView, ManualStockEntryView, ManualStockExitView,
+    # Supplier Management
+    SuppliersListView, AddSupplierView, PurchaseInvoicesView, AddPurchaseInvoiceView
 )
 
 
@@ -112,6 +116,18 @@ class AdminPanel:
         self.views['bulk_products'] = BulkProductsView(self.page, self.api_service, self.notification_manager)
         self.views['product_attributes'] = ProductAttributesView(self.page, self.api_service, self.notification_manager)
         self.views['brands'] = BrandsView(self.page, self.api_service, self.notification_manager)
+        
+        # Stock Management
+        self.views['stock_movements'] = StockMovementsView(self.page, self.api_service, self.notification_manager)
+        self.views['low_stock_alerts'] = LowStockAlertsView(self.page, self.api_service, self.notification_manager)
+        self.views['manual_stock_entry'] = ManualStockEntryView(self.page, self.api_service, self.notification_manager)
+        self.views['manual_stock_exit'] = ManualStockExitView(self.page, self.api_service, self.notification_manager)
+        
+        # Supplier Management
+        self.views['suppliers_list'] = SuppliersListView(self.page, self.api_service, self.notification_manager)
+        self.views['add_supplier'] = AddSupplierView(self.page, self.api_service, self.notification_manager)
+        self.views['purchase_invoices'] = PurchaseInvoicesView(self.page, self.api_service, self.notification_manager)
+        self.views['add_purchase_invoice'] = AddPurchaseInvoiceView(self.page, self.api_service, self.notification_manager)
         
         # Order Management
         self.views['orders_list'] = OrdersListView(self.page, self.api_service, self.notification_manager)

@@ -1352,6 +1352,686 @@ async def toggle_user_active(
     
     return {"message": f"Kullanıcı {'aktif' if user.is_active is True else 'pasif'} duruma getirildi"}
 
+
+# --- STOK YÖNETİMİ ENDPOINT'LERİ ---
+
+@app.get("/stock/movements/")
+async def get_stock_movements(
+    product_id: Optional[int] = None,
+    movement_type: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin_user)
+):
+    """Stok hareketlerini listele (Admin)"""
+    query = db.query(models.StockMovement)
+    
+    # Filtreler
+    if product_id:
+        query = query.filter(models.StockMovement.product_id == product_id)
+    if movement_type:
+        query = query.filter(models.StockMovement.movement_type == movement_type)
+    
+    movements = query.order_by(models.StockMovement.created_at.desc()).offset(skip).limit(limit).all()
+    
+    # Ürün adlarını ekle
+    result = []
+    for movement in movements:
+        movement_dict = {
+            "id": movement.id,
+            "product_id": movement.product_id,
+            "product_name": movement.product.name if movement.product else "N/A",
+            "movement_type": movement.movement_type,
+            "quantity": movement.quantity,
+            "description": movement.description,
+            "reference": movement.reference,
+            "created_by": movement.created_by,
+            "created_at": movement.created_at.isoformat() if movement.created_at else None
+        }
+        result.append(movement_dict)
+    
+    return result
+
+
+@app.post("/stock/movements/")
+async def create_stock_movement(
+    request: Request,
+    movement: schemas.StockMovementCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin_user)
+):
+    """Yeni stok hareketi oluştur (Admin)"""
+    # Ürünü kontrol et
+    product = db.query(models.Product).filter(models.Product.id == movement.product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Ürün bulunamadı")
+    
+    # Stok hareketi oluştur
+    db_movement = models.StockMovement(
+        product_id=movement.product_id,
+        movement_type=movement.movement_type,
+        quantity=movement.quantity,
+        description=movement.description,
+        reference=movement.reference,
+        created_by=current_user.id
+    )
+    db.add(db_movement)
+    
+    # Ürün stok miktarını güncelle
+    if movement.movement_type == "entry":
+        product.stock_quantity += movement.quantity
+    elif movement.movement_type == "exit":
+        if product.stock_quantity < movement.quantity:
+            raise HTTPException(status_code=400, detail="Yetersiz stok")
+        product.stock_quantity -= movement.quantity
+    
+    db.commit()
+    db.refresh(db_movement)
+    
+    # Güvenlik logu
+    SecurityAuditLogger.log_security_event(
+        "stock_movement_created",
+        current_user.id,
+        {
+            "movement_id": db_movement.id,
+            "product_id": movement.product_id,
+            "movement_type": movement.movement_type,
+            "quantity": movement.quantity
+        },
+        request
+    )
+    
+    # WebSocket bildirimi
+    await manager.broadcast("products_updated")
+    
+    return {
+        "id": db_movement.id,
+        "product_id": db_movement.product_id,
+        "product_name": product.name,
+        "movement_type": db_movement.movement_type,
+        "quantity": db_movement.quantity,
+        "description": db_movement.description,
+        "reference": db_movement.reference,
+        "created_by": db_movement.created_by,
+        "created_at": db_movement.created_at.isoformat() if db_movement.created_at else None
+    }
+
+
+@app.get("/stock/low-stock/")
+async def get_low_stock_products(
+    threshold: int = 10,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin_user)
+):
+    """Düşük stoklu ürünleri listele (Admin)"""
+    products = db.query(models.Product).filter(
+        models.Product.stock_quantity <= threshold
+    ).order_by(models.Product.stock_quantity.asc()).all()
+    
+    return products
+
+
+@app.get("/stock/summary/")
+async def get_stock_summary(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin_user)
+):
+    """Stok özeti (Admin)"""
+    from sqlalchemy import func
+    
+    # Toplam ürün sayısı
+    total_products = db.query(func.count(models.Product.id)).scalar()
+    
+    # Düşük stoklu ürün sayısı (10'dan az)
+    low_stock_count = db.query(func.count(models.Product.id)).filter(
+        models.Product.stock_quantity <= 10
+    ).scalar()
+    
+    # Stokta olmayan ürün sayısı
+    out_of_stock_count = db.query(func.count(models.Product.id)).filter(
+        models.Product.stock_quantity == 0
+    ).scalar()
+    
+    # Toplam stok değeri
+    total_stock_value = db.query(
+        func.sum(models.Product.price * models.Product.stock_quantity)
+    ).scalar() or 0
+    
+    return {
+        "total_products": total_products,
+        "low_stock_count": low_stock_count,
+        "out_of_stock_count": out_of_stock_count,
+        "total_stock_value": float(total_stock_value)
+    }
+
+
+# ============================================================================
+# TEDARİKÇİ YÖNETİMİ (SUPPLIER MANAGEMENT)
+# ============================================================================
+
+@app.get("/suppliers/", response_model=List[schemas.Supplier])
+async def get_suppliers(
+    skip: int = 0,
+    limit: int = 100,
+    is_active: Optional[bool] = None,
+    search: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin_user)
+):
+    """
+    Tedarikçi listesini getir (Admin)
+    
+    - **skip**: Atlanacak kayıt sayısı
+    - **limit**: Getirilecek maksimum kayıt sayısı
+    - **is_active**: Aktif/pasif filtresi
+    - **search**: Tedarikçi adı veya iletişim kişisi araması
+    """
+    query = db.query(models.Supplier)
+    
+    # Aktif/pasif filtresi
+    if is_active is not None:
+        query = query.filter(models.Supplier.is_active == is_active)
+    
+    # Arama filtresi
+    if search:
+        search_pattern = f"%{search}%"
+        query = query.filter(
+            or_(
+                models.Supplier.name.ilike(search_pattern),
+                models.Supplier.contact_person.ilike(search_pattern)
+            )
+        )
+    
+    # Sıralama ve sayfalama
+    suppliers = query.order_by(models.Supplier.name).offset(skip).limit(limit).all()
+    
+    return suppliers
+
+
+@app.get("/suppliers/{supplier_id}", response_model=schemas.Supplier)
+async def get_supplier(
+    supplier_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin_user)
+):
+    """Belirli bir tedarikçinin detaylarını getir (Admin)"""
+    supplier = db.query(models.Supplier).filter(models.Supplier.id == supplier_id).first()
+    if not supplier:
+        raise HTTPException(status_code=404, detail="Tedarikçi bulunamadı")
+    return supplier
+
+
+@app.post("/suppliers/", response_model=schemas.Supplier, status_code=201)
+async def create_supplier(
+    supplier: schemas.SupplierCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin_user)
+):
+    """
+    Yeni tedarikçi oluştur (Admin)
+    
+    - **name**: Tedarikçi adı (zorunlu)
+    - **contact_person**: İletişim kişisi
+    - **email**: E-posta adresi
+    - **phone**: Telefon numarası
+    - **address**: Adres
+    - **tax_number**: Vergi numarası
+    - **notes**: Notlar
+    - **is_active**: Aktif durumu
+    """
+    # Aynı isimde tedarikçi var mı kontrol et
+    existing = db.query(models.Supplier).filter(models.Supplier.name == supplier.name).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Bu isimde bir tedarikçi zaten mevcut")
+    
+    # Yeni tedarikçi oluştur
+    db_supplier = models.Supplier(**supplier.dict())
+    db.add(db_supplier)
+    db.commit()
+    db.refresh(db_supplier)
+    
+    # Güvenlik kaydı
+    await security_logger.log_action(
+        user_id=current_user.id,
+        action="supplier_created",
+        details=f"Yeni tedarikçi oluşturuldu: {db_supplier.name}",
+        ip_address="admin_panel"
+    )
+    
+    # WebSocket bildirimi
+    await manager.broadcast({
+        "type": "supplier_created",
+        "supplier": {
+            "id": db_supplier.id,
+            "name": db_supplier.name
+        }
+    })
+    
+    return db_supplier
+
+
+@app.put("/suppliers/{supplier_id}", response_model=schemas.Supplier)
+async def update_supplier(
+    supplier_id: int,
+    supplier_update: schemas.SupplierUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin_user)
+):
+    """Tedarikçi bilgilerini güncelle (Admin)"""
+    db_supplier = db.query(models.Supplier).filter(models.Supplier.id == supplier_id).first()
+    if not db_supplier:
+        raise HTTPException(status_code=404, detail="Tedarikçi bulunamadı")
+    
+    # Güncelleme verilerini uygula
+    update_data = supplier_update.dict(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(db_supplier, field, value)
+    
+    db_supplier.updated_at = datetime.now()
+    db.commit()
+    db.refresh(db_supplier)
+    
+    # Güvenlik kaydı
+    await security_logger.log_action(
+        user_id=current_user.id,
+        action="supplier_updated",
+        details=f"Tedarikçi güncellendi: {db_supplier.name}",
+        ip_address="admin_panel"
+    )
+    
+    # WebSocket bildirimi
+    await manager.broadcast({
+        "type": "supplier_updated",
+        "supplier": {
+            "id": db_supplier.id,
+            "name": db_supplier.name
+        }
+    })
+    
+    return db_supplier
+
+
+@app.delete("/suppliers/{supplier_id}", status_code=204)
+async def delete_supplier(
+    supplier_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin_user)
+):
+    """Tedarikçiyi sil (Admin)"""
+    db_supplier = db.query(models.Supplier).filter(models.Supplier.id == supplier_id).first()
+    if not db_supplier:
+        raise HTTPException(status_code=404, detail="Tedarikçi bulunamadı")
+    
+    # İlişkili satın almalar var mı kontrol et
+    purchase_count = db.query(models.Purchase).filter(models.Purchase.supplier_id == supplier_id).count()
+    if purchase_count > 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Bu tedarikçiye ait {purchase_count} adet satın alma kaydı var. Önce bunları silmelisiniz."
+        )
+    
+    supplier_name = db_supplier.name
+    db.delete(db_supplier)
+    db.commit()
+    
+    # Güvenlik kaydı
+    await security_logger.log_action(
+        user_id=current_user.id,
+        action="supplier_deleted",
+        details=f"Tedarikçi silindi: {supplier_name}",
+        ip_address="admin_panel"
+    )
+    
+    # WebSocket bildirimi
+    await manager.broadcast({
+        "type": "supplier_deleted",
+        "supplier_id": supplier_id
+    })
+    
+    return None
+
+
+# ============================================================================
+# SATIN ALMA YÖNETİMİ (PURCHASE MANAGEMENT)
+# ============================================================================
+
+@app.get("/purchases/", response_model=List[schemas.Purchase])
+async def get_purchases(
+    skip: int = 0,
+    limit: int = 100,
+    supplier_id: Optional[int] = None,
+    status: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin_user)
+):
+    """
+    Satın alma listesini getir (Admin)
+    
+    - **skip**: Atlanacak kayıt sayısı
+    - **limit**: Getirilecek maksimum kayıt sayısı
+    - **supplier_id**: Tedarikçi filtresi
+    - **status**: Durum filtresi (pending, completed, cancelled)
+    - **start_date**: Başlangıç tarihi (YYYY-MM-DD)
+    - **end_date**: Bitiş tarihi (YYYY-MM-DD)
+    """
+    query = db.query(models.Purchase).join(models.Supplier)
+    
+    # Tedarikçi filtresi
+    if supplier_id:
+        query = query.filter(models.Purchase.supplier_id == supplier_id)
+    
+    # Durum filtresi
+    if status:
+        query = query.filter(models.Purchase.status == status)
+    
+    # Tarih filtreleri
+    if start_date:
+        try:
+            start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+            query = query.filter(models.Purchase.purchase_date >= start_dt)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Geçersiz başlangıç tarihi formatı (YYYY-MM-DD)")
+    
+    if end_date:
+        try:
+            end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+            # Günün sonuna kadar dahil et
+            end_dt = end_dt.replace(hour=23, minute=59, second=59)
+            query = query.filter(models.Purchase.purchase_date <= end_dt)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Geçersiz bitiş tarihi formatı (YYYY-MM-DD)")
+    
+    # Sıralama ve sayfalama
+    purchases = query.order_by(models.Purchase.purchase_date.desc()).offset(skip).limit(limit).all()
+    
+    # Tedarikçi adlarını ekle
+    result = []
+    for purchase in purchases:
+        purchase_dict = schemas.Purchase.from_orm(purchase).dict()
+        purchase_dict['supplier_name'] = purchase.supplier.name
+        
+        # Satın alma kalemlerini ekle
+        items = db.query(models.PurchaseItem).filter(
+            models.PurchaseItem.purchase_id == purchase.id
+        ).all()
+        
+        purchase_dict['items'] = []
+        for item in items:
+            item_dict = schemas.PurchaseItem.from_orm(item).dict()
+            product = db.query(models.Product).filter(models.Product.id == item.product_id).first()
+            if product:
+                item_dict['product_name'] = product.name
+            purchase_dict['items'].append(item_dict)
+        
+        result.append(purchase_dict)
+    
+    return result
+
+
+@app.get("/purchases/{purchase_id}", response_model=schemas.Purchase)
+async def get_purchase(
+    purchase_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin_user)
+):
+    """Belirli bir satın almanın detaylarını getir (Admin)"""
+    purchase = db.query(models.Purchase).filter(models.Purchase.id == purchase_id).first()
+    if not purchase:
+        raise HTTPException(status_code=404, detail="Satın alma bulunamadı")
+    
+    # Tedarikçi adını ekle
+    purchase_dict = schemas.Purchase.from_orm(purchase).dict()
+    purchase_dict['supplier_name'] = purchase.supplier.name
+    
+    # Satın alma kalemlerini ekle
+    items = db.query(models.PurchaseItem).filter(
+        models.PurchaseItem.purchase_id == purchase.id
+    ).all()
+    
+    purchase_dict['items'] = []
+    for item in items:
+        item_dict = schemas.PurchaseItem.from_orm(item).dict()
+        product = db.query(models.Product).filter(models.Product.id == item.product_id).first()
+        if product:
+            item_dict['product_name'] = product.name
+        purchase_dict['items'].append(item_dict)
+    
+    return purchase_dict
+
+
+@app.post("/purchases/", response_model=schemas.Purchase, status_code=201)
+async def create_purchase(
+    purchase: schemas.PurchaseCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin_user)
+):
+    """
+    Yeni satın alma oluştur (Admin)
+    
+    - **supplier_id**: Tedarikçi ID (zorunlu)
+    - **invoice_number**: Fatura numarası
+    - **purchase_date**: Satın alma tarihi
+    - **notes**: Notlar
+    - **items**: Satın alma kalemleri (en az 1 adet)
+    
+    Satın alma oluşturulduğunda:
+    - Ürün stokları otomatik olarak artırılır
+    - Stok hareketi kaydı oluşturulur
+    """
+    # Tedarikçi kontrolü
+    supplier = db.query(models.Supplier).filter(models.Supplier.id == purchase.supplier_id).first()
+    if not supplier:
+        raise HTTPException(status_code=404, detail="Tedarikçi bulunamadı")
+    
+    # Fatura numarası kontrolü
+    if purchase.invoice_number:
+        existing = db.query(models.Purchase).filter(
+            models.Purchase.invoice_number == purchase.invoice_number
+        ).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Bu fatura numarası zaten kullanılıyor")
+    
+    # Toplam tutarı hesapla
+    total_amount = 0
+    for item in purchase.items:
+        # Ürün kontrolü
+        product = db.query(models.Product).filter(models.Product.id == item.product_id).first()
+        if not product:
+            raise HTTPException(status_code=404, detail=f"Ürün bulunamadı: {item.product_id}")
+        
+        total_amount += item.quantity * item.unit_price
+    
+    # Satın alma oluştur
+    db_purchase = models.Purchase(
+        supplier_id=purchase.supplier_id,
+        invoice_number=purchase.invoice_number,
+        purchase_date=purchase.purchase_date or datetime.now(),
+        total_amount=total_amount,
+        notes=purchase.notes,
+        status="pending",
+        created_by=current_user.id
+    )
+    db.add(db_purchase)
+    db.commit()
+    db.refresh(db_purchase)
+    
+    # Satın alma kalemlerini oluştur ve stokları güncelle
+    for item in purchase.items:
+        # Satın alma kalemi
+        db_item = models.PurchaseItem(
+            purchase_id=db_purchase.id,
+            product_id=item.product_id,
+            quantity=item.quantity,
+            unit_price=item.unit_price,
+            total_price=item.quantity * item.unit_price
+        )
+        db.add(db_item)
+        
+        # Ürün stokunu artır
+        product = db.query(models.Product).filter(models.Product.id == item.product_id).first()
+        product.stock_quantity += item.quantity
+        
+        # Stok hareketi kaydı oluştur
+        stock_movement = models.StockMovement(
+            product_id=item.product_id,
+            movement_type="entry",
+            quantity=item.quantity,
+            description=f"Satın alma - Fatura: {purchase.invoice_number or 'N/A'}",
+            reference=f"PURCHASE-{db_purchase.id}",
+            created_by=current_user.id
+        )
+        db.add(stock_movement)
+    
+    db.commit()
+    
+    # Güvenlik kaydı
+    await security_logger.log_action(
+        user_id=current_user.id,
+        action="purchase_created",
+        details=f"Yeni satın alma oluşturuldu: {supplier.name} - {total_amount} TL",
+        ip_address="admin_panel"
+    )
+    
+    # WebSocket bildirimi
+    await manager.broadcast({
+        "type": "purchase_created",
+        "purchase": {
+            "id": db_purchase.id,
+            "supplier_name": supplier.name,
+            "total_amount": total_amount
+        }
+    })
+    
+    # Satın almayı detaylarıyla birlikte döndür
+    return await get_purchase(db_purchase.id, db, current_user)
+
+
+@app.put("/purchases/{purchase_id}", response_model=schemas.Purchase)
+async def update_purchase(
+    purchase_id: int,
+    purchase_update: schemas.PurchaseUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin_user)
+):
+    """
+    Satın alma bilgilerini güncelle (Admin)
+    
+    Not: Satın alma kalemleri güncellenemez, sadece genel bilgiler güncellenebilir
+    """
+    db_purchase = db.query(models.Purchase).filter(models.Purchase.id == purchase_id).first()
+    if not db_purchase:
+        raise HTTPException(status_code=404, detail="Satın alma bulunamadı")
+    
+    # Güncelleme verilerini uygula
+    update_data = purchase_update.dict(exclude_unset=True)
+    
+    # Tedarikçi değişiyorsa kontrol et
+    if 'supplier_id' in update_data:
+        supplier = db.query(models.Supplier).filter(
+            models.Supplier.id == update_data['supplier_id']
+        ).first()
+        if not supplier:
+            raise HTTPException(status_code=404, detail="Tedarikçi bulunamadı")
+    
+    # Fatura numarası değişiyorsa kontrol et
+    if 'invoice_number' in update_data and update_data['invoice_number']:
+        existing = db.query(models.Purchase).filter(
+            models.Purchase.invoice_number == update_data['invoice_number'],
+            models.Purchase.id != purchase_id
+        ).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Bu fatura numarası zaten kullanılıyor")
+    
+    for field, value in update_data.items():
+        setattr(db_purchase, field, value)
+    
+    db_purchase.updated_at = datetime.now()
+    db.commit()
+    db.refresh(db_purchase)
+    
+    # Güvenlik kaydı
+    await security_logger.log_action(
+        user_id=current_user.id,
+        action="purchase_updated",
+        details=f"Satın alma güncellendi: ID {purchase_id}",
+        ip_address="admin_panel"
+    )
+    
+    # WebSocket bildirimi
+    await manager.broadcast({
+        "type": "purchase_updated",
+        "purchase_id": purchase_id
+    })
+    
+    return await get_purchase(purchase_id, db, current_user)
+
+
+@app.delete("/purchases/{purchase_id}", status_code=204)
+async def delete_purchase(
+    purchase_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin_user)
+):
+    """
+    Satın almayı sil (Admin)
+    
+    Not: Satın alma silindiğinde stok miktarları geri alınır
+    """
+    db_purchase = db.query(models.Purchase).filter(models.Purchase.id == purchase_id).first()
+    if not db_purchase:
+        raise HTTPException(status_code=404, detail="Satın alma bulunamadı")
+    
+    # Satın alma kalemlerini al ve stokları geri al
+    items = db.query(models.PurchaseItem).filter(
+        models.PurchaseItem.purchase_id == purchase_id
+    ).all()
+    
+    for item in items:
+        product = db.query(models.Product).filter(models.Product.id == item.product_id).first()
+        if product:
+            # Stok miktarını azalt
+            product.stock_quantity -= item.quantity
+            if product.stock_quantity < 0:
+                product.stock_quantity = 0
+            
+            # Ters stok hareketi kaydı oluştur
+            stock_movement = models.StockMovement(
+                product_id=item.product_id,
+                movement_type="exit",
+                quantity=item.quantity,
+                description=f"Satın alma silindi - ID: {purchase_id}",
+                reference=f"PURCHASE-DELETE-{purchase_id}",
+                created_by=current_user.id
+            )
+            db.add(stock_movement)
+        
+        # Satın alma kalemini sil
+        db.delete(item)
+    
+    # Satın almayı sil
+    db.delete(db_purchase)
+    db.commit()
+    
+    # Güvenlik kaydı
+    await security_logger.log_action(
+        user_id=current_user.id,
+        action="purchase_deleted",
+        details=f"Satın alma silindi: ID {purchase_id}",
+        ip_address="admin_panel"
+    )
+    
+    # WebSocket bildirimi
+    await manager.broadcast({
+        "type": "purchase_deleted",
+        "purchase_id": purchase_id
+    })
+    
+    return None
+
+
 # Health check endpoint
 @app.get("/health")
 async def health_check():
